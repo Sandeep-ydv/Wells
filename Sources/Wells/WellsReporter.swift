@@ -24,7 +24,6 @@ public actor WellsReporter {
 	public nonisolated let baseURL: URL
     private let logger = OSLog(subsystem: "com.chimehq.Wells", category: "Reporter")
 	#if canImport(Background)
-	@available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
 	private let uploader: Uploader?
 	#else
 	private let uploader: Never? = nil
