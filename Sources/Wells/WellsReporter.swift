@@ -1,7 +1,9 @@
 import Foundation
 import os.log
 
+#if canImport(Background)
 import Background
+#endif
 
 public enum ReporterError: Error {
     case failedToCreateURL
@@ -21,7 +23,12 @@ public actor WellsReporter {
 
 	public nonisolated let baseURL: URL
     private let logger = OSLog(subsystem: "com.chimehq.Wells", category: "Reporter")
-	private let uploader: Uploader
+	#if canImport(Background)
+	@available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
+	private let uploader: Uploader?
+	#else
+	private let uploader: Never? = nil
+	#endif
 	private let backgroundIdentifier: String?
     public private(set) var locationProvider: ReportLocationProvider
 
@@ -42,18 +49,28 @@ public actor WellsReporter {
 			baseURL.appendingPathComponent($0).appendingPathExtension(WellsReporter.uploadFileExtension)
 		}
 
-		let config: URLSessionConfiguration
+		#if canImport(Background)
+		if #available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *) {
+			let config: URLSessionConfiguration
 
-		if let identifier = backgroundIdentifier {
-			config = URLSessionConfiguration.background(withIdentifier: identifier)
+			if let identifier = backgroundIdentifier {
+				config = URLSessionConfiguration.background(withIdentifier: identifier)
+			} else {
+				config = URLSessionConfiguration.default
+			}
+
+			self.uploader = Uploader(
+				sessionConfiguration: config,
+				identifierProvider: { $0.originalRequest?.uploadIdentifier }
+			)
 		} else {
-			config = URLSessionConfiguration.default
+			self.uploader = nil
+			os_log("Background uploads not available on iOS 13", log: self.logger, type: .info)
 		}
-
-		self.uploader = Uploader(
-			sessionConfiguration: config,
-			identifierProvider: { $0.originalRequest?.uploadIdentifier }
-		)
+		#else
+		self.uploader = nil
+		os_log("Background package not available", log: self.logger, type: .info)
+		#endif
 
 		Task {
 			try? await Task.sleep(nanoseconds: 10 * 1_000_000_000)
@@ -74,7 +91,12 @@ public actor WellsReporter {
 	}
 
     public var usingBackgroundUploads: Bool {
-        return backgroundIdentifier != nil
+        #if canImport(Background)
+        if #available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *) {
+            return backgroundIdentifier != nil && uploader != nil
+        }
+        #endif
+        return false
     }
 
     private func defaultURL(for identifier: String) -> URL {
@@ -113,15 +135,30 @@ public actor WellsReporter {
         // embed our header for background tracking
         request.uploadIdentifier = identifier
 
-		Task<Void, Never> {
-            await uploader.beginUpload(of: fileURL, with: request, identifier: identifier, handler: { _, result in
-				Task<Void, Never> {
-					await self.handleUploadComplete(result, for: identifier, request: uploadRequest)
-				}
-			})
+		#if canImport(Background)
+		if #available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *) {
+			guard let uploader = uploader else {
+				os_log("Uploader not available, cannot submit", log: self.logger, type: .error)
+				return
+			}
+
+			Task<Void, Never> {
+				await uploader.beginUpload(of: fileURL, with: request, identifier: identifier, handler: { _, result in
+					Task<Void, Never> {
+						await self.handleUploadComplete(result, for: identifier, request: uploadRequest)
+					}
+				})
+			}
+		} else {
+			os_log("Background uploads not available on iOS 13", log: self.logger, type: .info)
 		}
+		#else
+		os_log("Background package not available", log: self.logger, type: .info)
+		#endif
     }
 
+	#if canImport(Background)
+	@available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
 	private func handleUploadComplete(_ result: Result<URLResponse, Error>, for identifier: String, request: URLRequest) {
 		let networkResponse = NetworkResponse<Void>(with: result)
 
@@ -144,6 +181,7 @@ public actor WellsReporter {
 			removeFile(with: identifier)
 		}
 	}
+	#endif
 
     public func createReportDirectoryIfNeeded() throws {
         if FileManager.default.directoryExists(at: baseURL) {
