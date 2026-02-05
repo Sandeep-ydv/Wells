@@ -15,7 +15,7 @@ let package = Package(
 		.library(name: "Wells", targets: ["Wells"]),
 	],
 	dependencies: [
-		.package(url: "https://github.com/ChimeHQ/Background", revision: "11f1bc95a7ec88c275b522b12883ada9dbc062e6")
+		.package(url: "https://github.com/Sandeep-ydv/Background", revision: "11f1bc95a7ec88c275b522b12883ada9dbc062e6")
 	],
 	targets: [
 		.target(name: "Wells", dependencies: ["Background"]),

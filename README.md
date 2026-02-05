@@ -106,7 +106,7 @@ Bottom line: Wells submissions are best effort. Robust retry support means you h
 
 ## Using With MetricKit
 
-Wells works great for submitting data gathered from MetricKit. In fact, [MeterReporter](https://github.com/ChimeHQ/MeterReporter) uses it for a full MetricKit-based reporting system.
+Wells works great for submitting data gathered from MetricKit. In fact, [MeterReporter](https://github.com/Sandeep-ydv/MeterReporter) uses it for a full MetricKit-based reporting system.
 
 But, you can also do it yourself. Here's a simple example.
 
