@@ -15,7 +15,7 @@ let package = Package(
 		.library(name: "Wells", targets: ["Wells"]),
 	],
 	dependencies: [
-		.package(url: "https://github.com/Sandeep-ydv/Background", revision: "f802a457e8144b98687992598369692cda43b9ee")
+		.package(url: "https://github.com/Sandeep-ydv/Background", revision: "3c3ccc3f02cec1a981970320752dad6d29b81cb2")
 	],
 	targets: [
 		.target(name: "Wells", dependencies: ["Background"]),
